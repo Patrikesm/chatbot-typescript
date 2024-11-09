@@ -1,8 +1,10 @@
 export interface IMovieGateway {
-  getCasting(): any;
+  getCasting(movieName: string): any;
   getMovieSynopsis(movieName: string): Promise<any>;
-  getMovieRating(): any;
   getPopularMovies(): any;
-  getGenreRecomendations(): any;
-  getSimilarMovies(): any;
+  getMoviesByGenre(genre: string): any;
+  getSimilarMovies(movieId: string): any;
+
+  getMovieByName(movieName: string): any;
+  getGenres(): any;
 }

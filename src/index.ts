@@ -11,7 +11,6 @@ async function bootstrap() {
   app.use(express.json());
 
   app.get("/", (req, res) => {
-    console.log(process.env.MOVIE_API_URL);
     res.send("Hello World!");
   });
 

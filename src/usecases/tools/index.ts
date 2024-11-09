@@ -9,3 +9,7 @@ export const removeAccentsAndPoint = (str: string) => {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"<>\[\]\s]/g, "");
 };
+
+export const isObjectEmpty = (object: Object) => {
+  return Object.keys(object).length === 0;
+};
