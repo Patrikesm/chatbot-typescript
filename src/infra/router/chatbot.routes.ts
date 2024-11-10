@@ -18,7 +18,7 @@ class ChatbotRoutes {
   init() {
     this.chatbotRouter.post(
       "/",
-      async (req: Request, res: Response<ChatbotResponseDto>) => {
+      async (req: Request, res: Response<Partial<ChatbotResponseDto>>) => {
         const body = req.body;
 
         if (!body || isObjectEmpty(body)) {
@@ -30,9 +30,7 @@ class ChatbotRoutes {
 
         const response = await this.chatbotUseCase.readMessage(body?.message);
 
-        res.send({
-          message: response,
-        });
+        res.send(response);
       }
     );
   }

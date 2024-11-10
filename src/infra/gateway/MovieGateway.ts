@@ -59,6 +59,6 @@ export class MovieGateway implements IMovieGateway {
       `${this.baseUrl}/movie/${movieId}/similar?api_key=${this.apiToken}&include_adult=false&language=pt-BR`
     );
 
-    return response.data;
+    return response.data.results;
   }
 }
