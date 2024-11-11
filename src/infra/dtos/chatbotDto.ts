@@ -3,7 +3,7 @@ export type ChatbotResponseDto = {
   casting: string[];
   synopsis: string;
   rating: string;
-  popularMovies: any;
-  recomendation: any;
-  similar: any;
+  popularMovies: Object[];
+  recomendation: Object[];
+  similar: string[];
 };

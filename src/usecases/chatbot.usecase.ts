@@ -1,5 +1,5 @@
 import natural, { AggressiveTokenizer, WordTokenizer } from "natural";
-import { removeAccents, removeAccentsAndPoint } from "./tools";
+import { removeAccents } from "./tools";
 import { IMovieGateway } from "../infra/ports/IMovieGateway";
 import { MovieGateway } from "../infra/gateway/MovieGateway";
 import { dialogMap } from "./tools/dialogMap";
@@ -39,18 +39,17 @@ export class ChatbotUseCase {
       message
         .match(/(['"])([^'"]*)\1/g)
         ?.toString()
-        .replace(/'/g, "") || ""
+        .replace(/[^a-zA-Z0-9\s]/g, "") || ""
     );
   }
 
   private tokenizeMessage(message: string): string[] {
-    const messageWithouAccents = removeAccents(message.toLowerCase());
-    const tokenizedMessage = this.tokenizer.tokenize(messageWithouAccents);
+    const tokenizedMessage = this.tokenizer.tokenize(message);
     return tokenizedMessage.filter((token) => token.length >= 4);
   }
 
   private intentionIdentifier(tokenizedMessage: string[]) {
-    const foundedIntentions = new Set<string>();
+    const foundIntentions = new Set<string>();
     const possibleIntentions = new Set<string>();
 
     tokenizedMessage.forEach((token) => {
@@ -58,7 +57,7 @@ export class ChatbotUseCase {
         const jaroDistance = natural.JaroWinklerDistance(intention, token);
 
         if (token === intention || jaroDistance >= JARO_DISTANCE) {
-          foundedIntentions.add(intention);
+          foundIntentions.add(intention);
           continue;
         } else if (jaroDistance >= JARO_MEANING_DISTANCE) {
           possibleIntentions.add(intention);
@@ -66,7 +65,7 @@ export class ChatbotUseCase {
       }
     });
 
-    return { foundedIntentions, possibleIntentions };
+    return { foundIntentions, possibleIntentions };
   }
 
   private getBestMovieResult(movieName: string, results: any[]) {
@@ -96,15 +95,44 @@ export class ChatbotUseCase {
     return bestResult;
   }
 
+  private async getMovieByTitle(movieTitle: string): Promise<any> {
+    const response = await this.movieGateway.getMovieByName(movieTitle);
+    const bestResult = await this.getBestMovieResult(movieTitle, response);
+
+    return bestResult;
+  }
+
+  private async findPossibleGenre(genre: string): Promise<any> {
+    let validGenres: string[] = [];
+    let possibleGenre: any;
+    const genres = await this.movieGateway.getGenres();
+
+    genres.forEach((foundGenre: any) => {
+      validGenres.push(
+        validGenres.length < genres.length - 1
+          ? `${foundGenre.name}, `
+          : `${foundGenre.name}.`
+      );
+
+      if (
+        removeAccents(foundGenre.name.toLowerCase()) === genre.toLowerCase()
+      ) {
+        possibleGenre = foundGenre;
+      }
+    });
+
+    return { possibleGenre, validGenres };
+  }
+
   async readMessage(message: string): Promise<Partial<ChatbotResponseDto>> {
     let responseMessage: ChatbotResponseDto = {} as ChatbotResponseDto;
     const movieOrGenre = await this.verifyMovieNameOrGenre(message);
     const tokenizedMessage = this.tokenizeMessage(message);
 
-    const { foundedIntentions, possibleIntentions } =
+    const { foundIntentions, possibleIntentions } =
       this.intentionIdentifier(tokenizedMessage);
 
-    if (foundedIntentions.size === 0) {
+    if (foundIntentions.size === 0) {
       if (possibleIntentions.size > 0) {
         return {
           message: dialogMap.not_found.possibleActions.replace(
@@ -117,82 +145,83 @@ export class ChatbotUseCase {
       return { message: dialogMap.not_found.action };
     }
 
+    const intentions = Array.from(foundIntentions);
+
+    if (intentions[0] == Intentions.Recomendation) {
+      if (!movieOrGenre) return { message: dialogMap.not_found.genreName };
+
+      const { recomendation, validGenres } = await this.movieRecomendation(
+        movieOrGenre
+      );
+
+      if (!recomendation || recomendation.length === 0) {
+        return {
+          message: dialogMap.not_found.genreMovies.replace(
+            "{{genres}}",
+            validGenres.join("")
+          ),
+        };
+      }
+      responseMessage.message = dialogMap.message_options.recomendation.replace(
+        "{{genre}}",
+        movieOrGenre
+      );
+      responseMessage.recomendation = recomendation;
+      return responseMessage;
+    } else if (intentions[0] == Intentions.Popular) {
+      responseMessage.message = dialogMap.message_options.popular;
+      responseMessage.popularMovies = await this.popularMovies();
+
+      return responseMessage;
+    }
+
+    if (!movieOrGenre) return { message: dialogMap.not_found.movieName };
+
+    const foundMovie = await this.getMovieByTitle(movieOrGenre);
+
+    if (!foundMovie) {
+      return {
+        message: dialogMap.not_found.movie.replace("{{movie}}", movieOrGenre),
+      };
+    }
+
     responseMessage.message = dialogMap.message_options.default.replace(
       "{{movie}}",
-      movieOrGenre
+      foundMovie.title
     );
 
-    for (const intention of foundedIntentions) {
+    for (const intention of intentions) {
       switch (intention) {
         case Intentions.Casting:
-          if (!movieOrGenre) return { message: dialogMap.not_found.movieName };
-          responseMessage.casting = await this.movieCasting(movieOrGenre);
+          responseMessage.casting = await this.movieCasting(
+            foundMovie.id.toString()
+          );
           break;
 
         case Intentions.Synopsis:
-          if (!movieOrGenre) return { message: dialogMap.not_found.movieName };
-          responseMessage.synopsis = await this.movieSynopsis(movieOrGenre);
+          responseMessage.synopsis = foundMovie.overview;
           break;
 
         case Intentions.Rating:
-          if (!movieOrGenre) return { message: dialogMap.not_found.movieName };
-
           responseMessage.rating = dialogMap.message_options.rating.replace(
             "{{rating}}",
-            await this.movieRating(movieOrGenre)
+            await foundMovie.vote_average
           );
-          break;
-
-        case Intentions.Popular:
-          if (Object.keys(responseMessage).length > 1) break;
-          responseMessage.message = dialogMap.message_options.popular;
-          responseMessage.popularMovies = await this.popularMovies();
-
-          return responseMessage;
-
-        case Intentions.Recomendation:
-          if (Object.keys(responseMessage).length > 1) break;
-          if (!movieOrGenre) return { message: dialogMap.not_found.genreName };
-
-          const { recomendation, validGenres } = await this.movieRecomendation(
-            movieOrGenre
-          );
-
-          if (!recomendation || recomendation.length === 0) {
-            return {
-              message: dialogMap.not_found.genreMovies.replace(
-                "{{genres}}",
-                validGenres.join("")
-              ),
-            };
-          }
-          responseMessage.message =
-            dialogMap.message_options.recomendation.replace(
-              "{{genre}}",
-              movieOrGenre
-            );
-          responseMessage.recomendation = recomendation;
           break;
 
         case Intentions.Similiar:
-          if (!movieOrGenre) return { message: dialogMap.not_found.movieName };
-          responseMessage.similar = await this.similarMovie(movieOrGenre);
+          responseMessage.similar = await this.similarMovie(
+            foundMovie.id.toString()
+          );
           break;
-        default:
-          return { message: dialogMap.not_found.action };
       }
     }
 
     return responseMessage;
   }
 
-  async movieCasting(movieName: string): Promise<string[]> {
-    const response = await this.movieGateway.getMovieByName(movieName);
-    const bestResult = await this.getBestMovieResult(movieName, response);
-
-    const movieInfo = await this.movieGateway.getCasting(
-      bestResult.id?.toString()
-    );
+  async movieCasting(movieId: string): Promise<string[]> {
+    const movieInfo = await this.movieGateway.getCasting(movieId);
 
     const casting = movieInfo.map((casting: any) => {
       return `${casting.name} como ${casting.character}`;
@@ -202,17 +231,18 @@ export class ChatbotUseCase {
   }
 
   async movieSynopsis(movieName: string): Promise<string> {
-    const response = await this.movieGateway.getMovieSynopsis(movieName);
-    const bestResult = await this.getBestMovieResult(movieName, response);
-
-    return bestResult.overview;
+    // colocar o guardRails aqui
+    return "";
   }
 
-  async movieRating(movieName: string): Promise<string> {
-    const response = await this.movieGateway.getMovieByName(movieName);
-    const bestResult = await this.getBestMovieResult(movieName, response);
+  async similarMovie(movieId: string): Promise<string[]> {
+    const response = await this.movieGateway.getSimilarMovies(movieId);
 
-    return bestResult.vote_average.toString();
+    const similarMovies = response.map((movie: any) => {
+      return `${movie.title} nota ${movie.vote_average}`;
+    });
+
+    return similarMovies;
   }
 
   async popularMovies(): Promise<any> {
@@ -230,24 +260,7 @@ export class ChatbotUseCase {
   }
 
   async movieRecomendation(genre: string): Promise<any> {
-    let validGenres: string[] = [];
-    let possibleGenre: any;
-    const genres = await this.movieGateway.getGenres();
-
-    genres.forEach((foundGenre: any) => {
-      validGenres.push(
-        validGenres.length < genres.length - 1
-          ? `${foundGenre.name}, `
-          : `${foundGenre.name}.`
-      );
-
-      if (
-        removeAccents(foundGenre.name.toLowerCase()) ===
-        removeAccents(genre.toLowerCase())
-      ) {
-        possibleGenre = foundGenre;
-      }
-    });
+    const { possibleGenre, validGenres } = await this.findPossibleGenre(genre);
 
     if (possibleGenre) {
       const response = await this.movieGateway.getMoviesByGenre(
@@ -267,30 +280,4 @@ export class ChatbotUseCase {
 
     return { possibleGenre, validGenres };
   }
-
-  async similarMovie(movieName: string): Promise<string[]> {
-    const movies = await this.movieGateway.getMovieByName(movieName);
-    const bestResult = await this.getBestMovieResult(movieName, movies);
-
-    const response = await this.movieGateway.getSimilarMovies(bestResult.id);
-
-    const similarMovies = response.map((movie: any) => {
-      return `${movie.title} nota ${movie.vote_average}`;
-    });
-
-    return similarMovies;
-  }
 }
-
-// todo
-// validação de resposta vazia
-// validação de entrada da mensagem
-// ajustar o body de retorno
-// verificar se tem mais de um nome de filme
-// todo ver a saida caso não tenha nenhum
-// abstrair o get do filme, pode ser uma vez só
-// ver aonde eu adiciono a mensagem principal
-// formatar corretamente a mensagem
-// ajustar url
-// fazer um enum com as intenções
-// ajustar dto

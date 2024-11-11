@@ -11,7 +11,9 @@ async function bootstrap() {
   app.use(express.json());
 
   app.get("/", (req, res) => {
-    res.send("Hello World!");
+    res.send(
+      "Olá, está é uma API destinada a buscar informações sobre filmes!"
+    );
   });
 
   app.use("/chatbot", chatbotRoutes);

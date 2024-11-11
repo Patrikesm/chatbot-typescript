@@ -1,13 +1,15 @@
 export const dialogMap = {
   not_found: {
     action:
-      "Desculpe não entendi sua mensagem, pode tentar novamente? Posso responder perguntas como: Qual a sinopse do filme 'Deadpool', Qual elenco do filme 'O poderoso chefão' e não esqueça de utilizar aspas simples pra eu saber de que filme ou genero estamos falando",
+      "Desculpe não entendi sua mensagem, pode tentar novamente? Posso responder perguntas como: Qual a sinopse do filme 'Deadpool', Qual elenco do filme 'O poderoso chefão' e não esqueça de utilizar aspas simples pra eu saber de que filme ou gênero estamos falando",
     movieName:
-      "Desculpe não pude identificar nenhum nome de filme em sua pergunta, pode tentar novamente?",
+      "Desculpe não pude identificar nenhum nome de filme em sua pergunta, pode tentar novamente? lembre-se de usar aspas simples para identificar o filme",
+    movie:
+      "Desculpe não consegui encontrar nenhum filme chamado {{movie}}, pode tentar novamente? lembre-se de usar aspas simples para identificar o filme",
     genreName:
-      "Desculpe não pude identificar nenhum genero filme em sua pergunta, pode tentar novamente?",
+      "Desculpe não pude identificar nenhum gênero filme em sua pergunta, pode tentar novamente? lembre-se de usar aspas simples para identificar o gênero",
     genreMovies:
-      "Desculpe não pude identificar nenhum filme com esse genero, pode tentar novamente? Aqui uma lista de generos que consigo procurar {{genres}}",
+      "Desculpe não pude identificar nenhum filme com esse gênero, pode tentar novamente? Aqui uma lista de gêneros que consigo procurar {{genres}}",
     possibleActions:
       "Desculpe não pude identificar nenhuma ação, você quis dizer {{intentions}}",
   },
@@ -16,6 +18,6 @@ export const dialogMap = {
     rating: "A Avaliação do filme é: {{rating}}",
     popular: "Segue uma listagem de filmes melhores avaliados",
     recomendation:
-      "Listagem de recomendações de filmes com base no genero {{genre}}",
+      "Listagem de recomendações de filmes com base no gênero {{genre}}",
   },
 };

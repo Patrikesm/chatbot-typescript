@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { ChatbotUseCase } from "../../usecases/chatbot.usecase";
 import { ChatbotResponseDto } from "../dtos/chatbotDto";
-import { isObjectEmpty } from "../../usecases/tools";
+import { isObjectEmpty, removeAccents } from "../../usecases/tools";
 
 class ChatbotRoutes {
   private chatbotUseCase: ChatbotUseCase;
@@ -13,22 +13,26 @@ class ChatbotRoutes {
     this.init();
   }
 
-  // implementar o zod
-
   init() {
     this.chatbotRouter.post(
       "/",
       async (req: Request, res: Response<Partial<ChatbotResponseDto>>) => {
         const body = req.body;
 
-        if (!body || isObjectEmpty(body)) {
+        if (
+          !body ||
+          isObjectEmpty(body) ||
+          !body.message ||
+          body.message.trim() === ""
+        ) {
           res.send({
             message:
-              "Desculpe não consegui entender, parece que sua mensagem está vazia",
+              "Desculpe não consegui entender, parece que sua mensagem está vazia, tente enviar uma mensagem com o formato: {message: 'Pergunta'} ",
           });
         }
-
-        const response = await this.chatbotUseCase.readMessage(body?.message);
+        const response = await this.chatbotUseCase.readMessage(
+          removeAccents(body?.message).toLowerCase()
+        );
 
         res.send(response);
       }
