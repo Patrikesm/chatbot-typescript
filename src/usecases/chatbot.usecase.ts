@@ -276,6 +276,3 @@ export class ChatbotUseCase {
     return { possibleGenre, validGenres };
   }
 }
-
-// Mais uma dúvida que fiquei sobre o guardrails, eu tinha iniciado um referente a palavrões, mas me deparei com um problema, pra impedir que tenha esse tipo de linguagem eu teria que construir como se fosse um mapa de palavras relacionadas, e eu nao gostaria de deixar de forma explícita vários palavrões no código, você consegue confirmar se teria problema ter esse tipo de mapa ?
-// Nesse caso utilize um LLM com regras de guardrails não a necessidade de colocar palavrões , o importante do guardrails seria não deixar fugir do escopo sobre filmes.
