@@ -18,7 +18,6 @@ class ChatbotRoutes {
       "/",
       async (req: Request, res: Response<Partial<ChatbotResponseDto>>) => {
         const body = req.body;
-
         if (
           !body ||
           isObjectEmpty(body) ||

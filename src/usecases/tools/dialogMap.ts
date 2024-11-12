@@ -1,7 +1,7 @@
 export const dialogMap = {
   not_found: {
     action:
-      "Desculpe não entendi sua mensagem, pode tentar novamente? Posso responder perguntas como: Qual a sinopse do filme 'Deadpool', Qual elenco do filme 'O poderoso chefão' e não esqueça de utilizar aspas simples pra eu saber de que filme ou gênero estamos falando",
+      "Desculpe não entendi sua mensagem, pode tentar novamente? Posso responder perguntas como: Qual a sinopse e avalição do filme 'Deadpool', Qual elenco do filme 'O poderoso chefão' e não esqueça de utilizar aspas simples pra eu saber de que filme ou gênero estamos falando",
     movieName:
       "Desculpe não pude identificar nenhum nome de filme em sua pergunta, pode tentar novamente? lembre-se de usar aspas simples para identificar o filme",
     movie:
